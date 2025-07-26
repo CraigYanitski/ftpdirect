@@ -62,11 +62,11 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
             break
         }
         fmt.Printf("Received: %s\n", message)
-        err = conn.WriteMessage(websocket.TextMessage, message)
-        if err != nil {
-            log.Println("Error echoing received message")
-            break
-        }
+        // err = conn.WriteMessage(websocket.TextMessage, message)
+        // if err != nil {
+        //     log.Println("Error echoing received message")
+        //     break
+        // }
     }
 }
 
