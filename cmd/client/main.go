@@ -13,6 +13,14 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type apiConfig struct {
+    ws        *websocket.Conn
+    tcpConn   *net.Conn
+    tcpAddr   string
+    peer      string
+    peerConn  *net.Conn
+}
+
 func startTCPServer() (string, error) {
     listener, err := net.Listen("tcp", ":0")
     if err != nil {
@@ -68,16 +76,17 @@ func main() {
         return
     }
     log.Printf("TCP listening on %s\n", tcpAddr)
-    conn.WriteMessage(websocket.TextMessage, []byte(tcpAddr))
+
+    cfg := &apiConfig{
+        ws: conn,
+        tcpAddr: tcpAddr,
+    }
+    cfg.ws.WriteMessage(websocket.TextMessage, []byte(tcpAddr))
+
+    startRepl(cfg)
 
     if len(os.Args) > 1 {
         peerAddr := os.Args[1]
-        // _, peerAddrBytes, err := conn.ReadMessage()
-        // if err != nil {
-        //     log.Println(err)
-        //     return
-        // }
-        // peerAddr := string(peerAddrBytes)
         fmt.Printf("discovered peer: %s\n", peerAddr)
 
         tcpConn, err := net.Dial("tcp", peerAddr)
@@ -85,6 +94,8 @@ func main() {
             log.Println(err)
         }
         defer tcpConn.Close()
+
+        cfg.tcpConn = &tcpConn
 
         filename := "README.md"
         file, _ := os.Open(filename)
@@ -97,9 +108,9 @@ func main() {
                 break
             }
 
-            tcpConn.Write(buf[:n])
+            (*cfg.tcpConn).Write(buf[:n])
         }
-        log.Printf("sent file %s successfully\n", filename)
+        log.Printf("sent file %s successfully to %s\n", filename, cfg.tcpAddr)
     }
 
     done := make(chan struct{})
