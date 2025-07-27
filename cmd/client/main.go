@@ -1,14 +1,54 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"net"
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
+
+func startTCPServer() (string, error) {
+    listener, err := net.Listen("tcp", ":0")
+    if err != nil {
+        return "", err
+    }
+    port := listener.Addr().(*net.TCPAddr).Port
+    go func() {
+        for {
+            conn, err := listener.Accept()
+            if err != nil{
+                continue
+            }
+            go handleIncoming(conn)
+        }
+    }()
+    return fmt.Sprintf("%s:%d", getLocalIP(), port), nil
+}
+
+func getLocalIP() string {
+    conn, _ := net.Dial("udp", "8.8.8.8:80")
+    defer conn.Close()
+    return strings.Split(conn.LocalAddr().String(), ":")[0]
+}
+
+func handleIncoming(conn net.Conn) {
+    defer conn.Close()
+    buf := make([]byte, 1024)
+    for {
+        n, err := conn.Read(buf)
+        if err != nil {
+            break
+        }
+        fmt.Printf("%x", buf[:n])
+    }
+    return
+}
 
 func main() {
     interrupt := make(chan os.Signal, 1)
@@ -22,6 +62,46 @@ func main() {
     }
     defer conn.Close()
 
+    tcpAddr, err := startTCPServer()
+    if err != nil {
+        log.Println("error starting TCP server")
+        return
+    }
+    log.Printf("TCP listening on %s\n", tcpAddr)
+    conn.WriteMessage(websocket.TextMessage, []byte(tcpAddr))
+
+    if len(os.Args) > 1 {
+        peerAddr := os.Args[1]
+        // _, peerAddrBytes, err := conn.ReadMessage()
+        // if err != nil {
+        //     log.Println(err)
+        //     return
+        // }
+        // peerAddr := string(peerAddrBytes)
+        fmt.Printf("discovered peer: %s\n", peerAddr)
+
+        tcpConn, err := net.Dial("tcp", peerAddr)
+        if err != nil {
+            log.Println(err)
+        }
+        defer tcpConn.Close()
+
+        filename := "README.md"
+        file, _ := os.Open(filename)
+        defer file.Close()
+
+        buf := make([]byte, 1024)
+        for {
+            n, err := file.Read(buf)
+            if err != nil {
+                break
+            }
+
+            tcpConn.Write(buf[:n])
+        }
+        log.Printf("sent file %s successfully\n", filename)
+    }
+
     done := make(chan struct{})
 
     go func() {
@@ -32,7 +112,7 @@ func main() {
                 log.Println("error reading from websocket")
                 return
             }
-            log.Printf("Received: %s\n", message)
+            log.Printf("received: %s\n", message)
         }
     }()
 
@@ -43,12 +123,12 @@ func main() {
         select {
         case <-done:
             return
-        case t := <-ticker.C:
-            err := conn.WriteMessage(websocket.TextMessage, []byte(t.String()))
-            if err != nil {
-                log.Println("error writing time to websocket")
-                return
-            }
+        // case t := <-ticker.C:
+        //     err := conn.WriteMessage(websocket.TextMessage, []byte(t.String()))
+        //     if err != nil {
+        //         log.Println("error writing time to websocket")
+        //         return
+        //     }
         case <-interrupt:
             log.Println("interrupt...")
             err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
