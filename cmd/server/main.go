@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -159,6 +160,7 @@ func (cfg *apiConfig) connect(conn *websocket.Conn, roomID string) string {
                 websocket.TextMessage, 
                 []byte(fmt.Sprintf("%s attempting to join (yes|no)", conn.RemoteAddr())),
             )
+            time.Sleep(5*time.Second)
             _, msg, err := room[0].ReadMessage()
             if err != nil {
                 log.Printf("Error verifying connection to peer to peer room: %s", err)
