@@ -1,29 +1,38 @@
 package main
 
 import (
-	//"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
+	"sync"
 
-    "github.com/gorilla/websocket"
+	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
+	"github.com/joho/godotenv"
 )
 
+type apiConfig struct {
+    connections  map[string][]*websocket.Conn
+    mu           sync.Mutex
+}
+
 func main() {
+    godotenv.Load()
+    port := os.Getenv("FTPD_PORT")
+
+    cfg := apiConfig{
+        mu: sync.Mutex{},
+    }
+
     mux := http.NewServeMux()
+    mux.HandleFunc("/connect", cfg.handleConnection)
 
-    mux.HandleFunc("/connect", handleConnection)
-
-    port := "8080"
     server := http.Server{Addr: ":"+port, Handler: mux}
 
     fmt.Printf("Serving on port: %s\n", port)
     log.Fatal(server.ListenAndServe())
-}
-
-type Connection struct {
-    IpAddr  string  `json:"ip_addr"`
-    Port    string  `json:"port"`
 }
 
 var upgrader = websocket.Upgrader{
@@ -32,12 +41,17 @@ var upgrader = websocket.Upgrader{
     },
 }
 
-func handleConnection(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handleConnection(w http.ResponseWriter, r *http.Request) {
     conn, err := upgrader.Upgrade(w, r, nil)
     if err != nil {
         respondWithError(w, http.StatusInternalServerError, "unable to upgrade to websocket", err)
     }
-    defer conn.Close()
+    defer func(){
+        log.Printf("%s disconnected", conn.RemoteAddr())
+        conn.Close()
+    }()
+
+
 
     remoteAddr := conn.RemoteAddr()
     localAddr := conn.LocalAddr()
@@ -46,27 +60,122 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
     log.Printf("Local IP: %s\n", localAddr)
     log.Printf("Remote IP: %s\n", remoteAddr)
 
-    // c := &Connection{}
-    // decoder := json.NewDecoder(r.Body)
-    // err = decoder.Decode(c)
-    // if err != nil {
-    //     respondWithError(w, http.StatusInternalServerError, "unable to unmarshal connection", err)
-    // }
+    conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("public IP %s\n", remoteAddr)))
 
-    // respondWithJSON(w, http.StatusOK, c)
+    var roomID string
     
+    // loop forever to check for server commands, otherwise forward the messages
     for {
-        _, message, err := conn.ReadMessage()
+        msgType, message, err := conn.ReadMessage()
         if err != nil {
-            log.Println("Error reading message from websocket.")
+            log.Printf("Error reading message from websocket: %s\n", err)
             break
         }
-        fmt.Printf("Received: %s\n", message)
-        // err = conn.WriteMessage(websocket.TextMessage, message)
-        // if err != nil {
-        //     log.Println("Error echoing received message")
-        //     break
-        // }
+        // process text message
+        if msgType == websocket.TextMessage {
+            // log message
+            fmt.Printf("Received: %s\n", message)
+
+            // check if connection command
+            connectArgs := strings.Fields(strings.TrimSpace(string(message)))
+            var rID = ""
+            if (connectArgs[0] == "Connect") && (len(connectArgs) <= 2) {
+                if len(connectArgs) == 2 {
+                    rID = connectArgs[1]
+                } else {
+                    rID = ""
+                }
+                roomID := cfg.connect(
+                    conn, 
+                    rID,
+                )
+                // Check for error (blank) or rejection, else success
+                if roomID == "" {
+                    conn.WriteMessage(
+                        websocket.TextMessage,
+                        []byte(fmt.Sprintf("Unable to join room %s", rID)),
+                    )
+                } else if roomID == "rejected" {
+                    conn.WriteMessage(
+                        websocket.TextMessage,
+                        []byte(fmt.Sprintf("Rejected from room %s", rID)),
+                    )
+                    roomID = ""
+                } else {
+                    conn.WriteMessage(
+                        websocket.TextMessage, 
+                        []byte(fmt.Sprintf("Connected to room %s", roomID)),
+                    )
+                }
+            } else if (connectArgs[1] == "Disconnect") && (len(connectArgs) == 2) {
+                cfg.disconnect(connectArgs[1])
+            } else {
+                // all communication should begin with room ID
+                conns, ok := cfg.connections[connectArgs[0]]
+                if !ok {
+                    log.Printf("Requested room ID %s not found.\n", connectArgs[0])
+                    conn.WriteMessage(
+                        websocket.TextMessage, 
+                        []byte(fmt.Sprintf("Invalid room ID %s", connectArgs[0])),
+                    )
+                }
+                for _, c := range conns {
+                    if c != conn {
+                        c.WriteMessage(websocket.TextMessage, message)
+                    }
+                }
+            }
+        } else {
+            // otherwise send binary data to peer
+            for _, c := range cfg.connections[roomID] {
+                if c != conn {
+                    c.WriteMessage(websocket.BinaryMessage, message)
+                }
+            }
+        }
     }
+}
+
+func (cfg *apiConfig) disconnect(roomID string) {
+    /* function to disconnect a client from a room; currently deletes room */
+    cfg.mu.Lock()
+    defer cfg.mu.Unlock()
+    for _, c := range cfg.connections[roomID] {
+        c.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("disconnecting from room %s", roomID)))
+    }
+    delete(cfg.connections, roomID)
+    return
+}
+
+func (cfg *apiConfig) connect(conn *websocket.Conn, roomID string) string {
+    /* function to connect clients to peers */
+    cfg.mu.Lock()
+    defer cfg.mu.Unlock()
+    if room, ok := cfg.connections[roomID]; len(roomID) > 0 && ok {
+        var resp = ""
+        for {
+            room[0].WriteMessage(
+                websocket.TextMessage, 
+                []byte(fmt.Sprintf("%s attempting to join (y|n)", conn.RemoteAddr())),
+            )
+            _, msg, err := room[0].ReadMessage()
+            if err != nil {
+                log.Printf("Error verifying connection to peer to peer room: %s", err)
+                return ""
+            }
+            resp = strings.TrimSpace(strings.ToLower(string(msg)))
+            if (resp == "yes") || (resp == "n") {
+                break
+            } else if (resp == "no") || (resp == "n") {
+                return "rejected"
+            }
+        }
+        room = append(room, conn)
+        cfg.connections[roomID] = room
+    } else {
+        roomID = uuid.New().String()
+        cfg.connections[roomID] = []*websocket.Conn{conn}
+    }
+    return roomID
 }
 
