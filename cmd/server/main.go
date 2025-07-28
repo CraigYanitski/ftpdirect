@@ -152,8 +152,6 @@ func (cfg *apiConfig) disconnect(roomID string) {
 
 func (cfg *apiConfig) connect(conn *websocket.Conn, roomID string) string {
     /* function to connect clients to peers */
-    cfg.mu.Lock()
-    defer cfg.mu.Unlock()
     if room, ok := cfg.connections[roomID]; len(roomID) > 0 && ok {
         var resp = ""
         for {
@@ -174,9 +172,13 @@ func (cfg *apiConfig) connect(conn *websocket.Conn, roomID string) string {
                 return "rejected"
             }
         }
+        cfg.mu.Lock()
+        defer cfg.mu.Unlock()
         room = append(room, conn)
         cfg.connections[roomID] = room
     } else {
+        cfg.mu.Lock()
+        defer cfg.mu.Unlock()
         roomID = uuid.New().String()
         cfg.connections[roomID] = []*websocket.Conn{conn}
     }
