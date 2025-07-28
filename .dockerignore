@@ -1,0 +1,6 @@
+# flyctl launch added from .gitignore
+**/.env
+**/ftpd
+**/ftpd-server
+
+fly.toml
