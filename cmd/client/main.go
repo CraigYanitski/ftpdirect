@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -11,14 +12,18 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/joho/godotenv"
 )
 
 type apiConfig struct {
-    ws        *websocket.Conn
-    tcpConn   *net.Conn
-    tcpAddr   string
-    peer      string
-    peerConn  *net.Conn
+    ctx        context.Context
+    ctxCancel  context.CancelFunc
+    ws         *websocket.Conn
+    tcpConn    *net.Conn
+    tcpAddr    string
+    peer       string
+    peerConn   *net.Conn
+    internal   bool
 }
 
 func startTCPServer() (string, error) {
@@ -59,10 +64,16 @@ func handleIncoming(conn net.Conn) {
 }
 
 func main() {
+    godotenv.Load()
+    ftpdUrl := os.Getenv("FTPD_URL")
+
+    ctx, cancel := context.WithCancel(context.Background())
+    defer cancel()
+
     interrupt := make(chan os.Signal, 1)
     signal.Notify(interrupt, os.Interrupt)
 
-    u := url.URL{Scheme: "ws", Host: "localhost:8080", Path: "/connect"}
+    u := url.URL{Scheme: "wss", Host: ftpdUrl, Path: "/connect"}
 
     conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
     if err != nil {
@@ -78,12 +89,15 @@ func main() {
     log.Printf("TCP listening on %s\n", tcpAddr)
 
     cfg := &apiConfig{
+        ctx: ctx,
+        ctxCancel: cancel,
         ws: conn,
         tcpAddr: tcpAddr,
+        internal: true,
     }
-    cfg.ws.WriteMessage(websocket.TextMessage, []byte(tcpAddr))
+    cfg.ws.WriteMessage(websocket.TextMessage, []byte("TCP IP " + tcpAddr))
 
-    startRepl(cfg)
+    go startRepl(cfg)
 
     if len(os.Args) > 1 {
         peerAddr := os.Args[1]
@@ -119,8 +133,9 @@ func main() {
         defer close(done)
         for {
             _, message, err := conn.ReadMessage()
+            fmt.Print("\033[G\033[K")
             if err != nil {
-                log.Println("error reading from websocket")
+                log.Printf("error reading from websocket: %s\n", err)
                 return
             }
             log.Printf("received: %s\n", message)
