@@ -14,6 +14,12 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const (
+    confirmOption = "yes"
+    declineOption = "no"
+    decisionPrompt = "(" + confirmOption + "|" + declineOption + ")"
+)
+
 type apiConfig struct {
     connections  map[string][]*websocket.Conn
     mu           sync.Mutex
@@ -79,18 +85,22 @@ func (cfg *apiConfig) handleConnection(w http.ResponseWriter, r *http.Request) {
             fmt.Printf("Received: %s\n", message)
 
             // check if connection command
-            connectArgs := strings.Fields(strings.TrimSpace(string(message)))
+            msgArgs := strings.Fields(strings.TrimSpace(string(message)))
             var rID = ""
-            if (connectArgs[0] == "Connect") && (len(connectArgs) <= 2) {
-                if len(connectArgs) == 2 {
-                    rID = connectArgs[1]
+            if strings.Contains(decisionPrompt, strings.ToLower(msgArgs[0])) && (len(msgArgs) == 1) {
+                conn.WriteMessage(websocket.TextMessage, message)
+            } else if (msgArgs[0] == "Connect") && (len(msgArgs) <= 2) {
+                if len(msgArgs) == 2 {
+                    rID = msgArgs[1]
                 } else {
                     rID = ""
                 }
+                // TODO: maybe put this in a go routine
                 roomID := cfg.connect(
                     conn, 
                     rID,
                 )
+                
                 // Check for error (blank) or rejection, else success
                 if roomID == "" {
                     conn.WriteMessage(
@@ -109,18 +119,18 @@ func (cfg *apiConfig) handleConnection(w http.ResponseWriter, r *http.Request) {
                         []byte(fmt.Sprintf("Connected to room %s", roomID)),
                     )
                 }
-            } else if (connectArgs[0] == "Disconnect") && (len(connectArgs) == 2) {
-                cfg.disconnect(connectArgs[1])
-            } else if ((connectArgs[0] == "TCP") || (connectArgs[0] == "IP")) && (len(connectArgs) <= 3) {
+            } else if (msgArgs[0] == "Disconnect") && (len(msgArgs) == 2) {
+                cfg.disconnect(msgArgs[1])
+            } else if ((msgArgs[0] == "TCP") || (msgArgs[0] == "IP")) && (len(msgArgs) <= 3) {
                 continue
-            } else if connectArgs[0] == "roomID" {
+            } else if msgArgs[0] == "roomID" {
                 // all other communication should begin with room ID
-                conns, ok := cfg.connections[connectArgs[1]]
+                conns, ok := cfg.connections[msgArgs[1]]
                 if !ok {
-                    log.Printf("Requested room ID %s not found.\n", connectArgs[0])
+                    log.Printf("Requested room ID %s not found.\n", msgArgs[0])
                     conn.WriteMessage(
                         websocket.TextMessage, 
-                        []byte(fmt.Sprintf("Invalid room ID %s", connectArgs[0])),
+                        []byte(fmt.Sprintf("Invalid room ID %s", msgArgs[0])),
                     )
                 }
                 for _, c := range conns {
@@ -158,7 +168,7 @@ func (cfg *apiConfig) connect(conn *websocket.Conn, roomID string) string {
         for {
             room[0].WriteMessage(
                 websocket.TextMessage, 
-                []byte(fmt.Sprintf("%s attempting to join (yes|no)", conn.RemoteAddr())),
+                []byte(fmt.Sprintf("%s attempting to join " + decisionPrompt, conn.RemoteAddr())),
             )
             time.Sleep(5*time.Second)
             _, msg, err := room[0].ReadMessage()
@@ -168,9 +178,9 @@ func (cfg *apiConfig) connect(conn *websocket.Conn, roomID string) string {
             }
             resp = strings.TrimSpace(strings.ToLower(string(msg)))
             log.Println(resp)
-            if (resp == "yes") || (resp == "y") {
+            if (resp == confirmOption) || (resp == confirmOption[:2]) {
                 break
-            } else if (resp == "no") || (resp == "n") {
+            } else if (resp == declineOption) || (resp == declineOption[:2]) {
                 return "rejected"
             }
         }
