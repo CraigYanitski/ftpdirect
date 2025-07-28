@@ -107,10 +107,12 @@ func (cfg *apiConfig) handleConnection(w http.ResponseWriter, r *http.Request) {
                         []byte(fmt.Sprintf("Connected to room %s", roomID)),
                     )
                 }
-            } else if (connectArgs[1] == "Disconnect") && (len(connectArgs) == 2) {
+            } else if (connectArgs[0] == "Disconnect") && (len(connectArgs) == 2) {
                 cfg.disconnect(connectArgs[1])
+            } else if ((connectArgs[0] == "TCP") || (connectArgs[0] == "IP")) && (len(connectArgs) <= 3) {
+                continue
             } else {
-                // all communication should begin with room ID
+                // all other communication should begin with room ID
                 conns, ok := cfg.connections[connectArgs[0]]
                 if !ok {
                     log.Printf("Requested room ID %s not found.\n", connectArgs[0])
