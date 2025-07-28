@@ -23,6 +23,7 @@ func main() {
     port := os.Getenv("FTPD_PORT")
 
     cfg := apiConfig{
+        connections: make(map[string][]*websocket.Conn),
         mu: sync.Mutex{},
     }
 
