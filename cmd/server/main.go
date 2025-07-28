@@ -112,9 +112,9 @@ func (cfg *apiConfig) handleConnection(w http.ResponseWriter, r *http.Request) {
                 cfg.disconnect(connectArgs[1])
             } else if ((connectArgs[0] == "TCP") || (connectArgs[0] == "IP")) && (len(connectArgs) <= 3) {
                 continue
-            } else {
+            } else if connectArgs[0] == "roomID" {
                 // all other communication should begin with room ID
-                conns, ok := cfg.connections[connectArgs[0]]
+                conns, ok := cfg.connections[connectArgs[1]]
                 if !ok {
                     log.Printf("Requested room ID %s not found.\n", connectArgs[0])
                     conn.WriteMessage(
@@ -159,7 +159,7 @@ func (cfg *apiConfig) connect(conn *websocket.Conn, roomID string) string {
         for {
             room[0].WriteMessage(
                 websocket.TextMessage, 
-                []byte(fmt.Sprintf("%s attempting to join (y|n)", conn.RemoteAddr())),
+                []byte(fmt.Sprintf("%s attempting to join (yes|no)", conn.RemoteAddr())),
             )
             _, msg, err := room[0].ReadMessage()
             if err != nil {
@@ -167,7 +167,8 @@ func (cfg *apiConfig) connect(conn *websocket.Conn, roomID string) string {
                 return ""
             }
             resp = strings.TrimSpace(strings.ToLower(string(msg)))
-            if (resp == "yes") || (resp == "n") {
+            log.Println(resp)
+            if (resp == "yes") || (resp == "y") {
                 break
             } else if (resp == "no") || (resp == "n") {
                 return "rejected"
