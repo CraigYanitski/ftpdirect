@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -17,7 +18,6 @@ import (
 
 type apiConfig struct {
     ctx        context.Context
-    ctxCancel  context.CancelFunc
     ws         *websocket.Conn
     tcpConn    *net.Conn
     tcpAddr    string
@@ -65,7 +65,11 @@ func handleIncoming(conn net.Conn) {
 
 func main() {
     godotenv.Load()
+    ftpdScheme := os.Getenv("FTPD_SCHEME")
     ftpdUrl := os.Getenv("FTPD_URL")
+
+    internalFlag := flag.Bool("int", false, "specify internal connection (don't connect to server)")
+    flag.Parse()
 
     ctx, cancel := context.WithCancel(context.Background())
     defer cancel()
@@ -73,7 +77,7 @@ func main() {
     interrupt := make(chan os.Signal, 1)
     signal.Notify(interrupt, os.Interrupt)
 
-    u := url.URL{Scheme: "wss", Host: ftpdUrl, Path: "/connect"}
+    u := url.URL{Scheme: ftpdScheme, Host: ftpdUrl, Path: "/connect"}
 
     conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
     if err != nil {
@@ -90,55 +94,66 @@ func main() {
 
     cfg := &apiConfig{
         ctx: ctx,
-        ctxCancel: cancel,
         ws: conn,
         tcpAddr: tcpAddr,
-        internal: true,
+        internal: *internalFlag,
     }
     cfg.ws.WriteMessage(websocket.TextMessage, []byte("TCP IP " + tcpAddr))
 
     go startRepl(cfg)
 
-    if len(os.Args) > 1 {
-        peerAddr := os.Args[1]
-        fmt.Printf("discovered peer: %s\n", peerAddr)
+    //  if len(os.Args) > 1 {
+    //      peerAddr := os.Args[1]
+    //      fmt.Printf("discovered peer: %s\n", peerAddr)
 
-        tcpConn, err := net.Dial("tcp", peerAddr)
-        if err != nil {
-            log.Println(err)
-        }
-        defer tcpConn.Close()
+    //      tcpConn, err := net.Dial("tcp", peerAddr)
+    //      if err != nil {
+    //          log.Println(err)
+    //      }
+    //      defer tcpConn.Close()
 
-        cfg.tcpConn = &tcpConn
+    //      cfg.tcpConn = &tcpConn
 
-        filename := "README.md"
-        file, _ := os.Open(filename)
-        defer file.Close()
+    //      filename := "README.md"
+    //      file, _ := os.Open(filename)
+    //      defer file.Close()
 
-        buf := make([]byte, 1024)
-        for {
-            n, err := file.Read(buf)
-            if err != nil {
-                break
-            }
+    //      buf := make([]byte, 1024)
+    //      for {
+    //          n, err := file.Read(buf)
+    //          if err != nil {
+    //              break
+    //          }
 
-            (*cfg.tcpConn).Write(buf[:n])
-        }
-        log.Printf("sent file %s successfully to %s\n", filename, cfg.tcpAddr)
-    }
+    //          (*cfg.tcpConn).Write(buf[:n])
+    //      }
+    //      log.Printf("sent file %s successfully to %s\n", filename, cfg.tcpAddr)
+    //  }
 
     done := make(chan struct{})
 
     go func() {
         defer close(done)
         for {
-            _, message, err := conn.ReadMessage()
+            msgType, message, err := conn.ReadMessage()
             fmt.Print("\033[G\033[K")
             if err != nil {
                 log.Printf("error reading from websocket: %s\n", err)
                 return
             }
-            log.Printf("received: %s\n", message)
+            if msgType == websocket.TextMessage {
+                msgArgs := strings.Fields(string(message))
+                log.Printf("received: %s\n", message)
+                if msgArgs[0] == "Connected" {
+                    cfg.peer = msgArgs[len(msgArgs)-1]
+                    fmt.Printf("    -> connected to room %s\n", cfg.peer)
+                } else if msgArgs[0] == "Disconnecting" {
+                    cfg.peer = ""
+                    fmt.Printf("    -> disconnected from %s\n", msgArgs[len(msgArgs)-1])
+                }
+            } else {
+                log.Printf("received: %x\n", message)
+            }
         }
     }()
 
