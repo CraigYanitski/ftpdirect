@@ -21,7 +21,7 @@ func commandConnect(cfg *apiConfig, arg string) error {
         if err != nil {
             return err
         }
-        cfg.peerConn = &conn
+        cfg.peerConn = conn.(*net.TCPConn)
     } else {
         var cmd string
         if len(arg) > 0 {

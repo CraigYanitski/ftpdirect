@@ -19,10 +19,10 @@ import (
 type apiConfig struct {
     ctx        context.Context
     ws         *websocket.Conn
-    tcpConn    *net.Conn
+    tcpConn    *net.TCPConn
     tcpAddr    string
     peer       string
-    peerConn   *net.Conn
+    peerConn   *net.TCPConn
     internal   bool
 }
 
@@ -101,34 +101,6 @@ func main() {
     cfg.ws.WriteMessage(websocket.TextMessage, []byte("TCP IP " + tcpAddr))
 
     go startRepl(cfg)
-
-    //  if len(os.Args) > 1 {
-    //      peerAddr := os.Args[1]
-    //      fmt.Printf("discovered peer: %s\n", peerAddr)
-
-    //      tcpConn, err := net.Dial("tcp", peerAddr)
-    //      if err != nil {
-    //          log.Println(err)
-    //      }
-    //      defer tcpConn.Close()
-
-    //      cfg.tcpConn = &tcpConn
-
-    //      filename := "README.md"
-    //      file, _ := os.Open(filename)
-    //      defer file.Close()
-
-    //      buf := make([]byte, 1024)
-    //      for {
-    //          n, err := file.Read(buf)
-    //          if err != nil {
-    //              break
-    //          }
-
-    //          (*cfg.tcpConn).Write(buf[:n])
-    //      }
-    //      log.Printf("sent file %s successfully to %s\n", filename, cfg.tcpAddr)
-    //  }
 
     done := make(chan struct{})
 
