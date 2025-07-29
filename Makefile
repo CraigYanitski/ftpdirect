@@ -1,4 +1,4 @@
-SHELL = /bin/zsh
+SHELL = /bin/sh
 
 .PHONY: help build install
 
