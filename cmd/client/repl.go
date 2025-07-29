@@ -6,6 +6,9 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 type cliCommand struct {
@@ -48,6 +51,7 @@ func startRepl(cfg *apiConfig) {
     var prompt string
     var arg string
     scanner := bufio.NewScanner(os.Stdin)
+    time.Sleep(2*time.Second)
     for {
         if cfg.peer == "" {
             prompt = "Headless -> "
@@ -76,7 +80,11 @@ func startRepl(cfg *apiConfig) {
             }
             continue
         } else {
-            log.Printf("command %s not valid\n", command)
+            var addrCmd = ""
+            if cfg.peer != "" {
+                addrCmd = "roomID " + cfg.peer + " "
+            }
+            cfg.ws.WriteMessage(websocket.TextMessage, []byte(addrCmd + input))
             continue
         }
     }

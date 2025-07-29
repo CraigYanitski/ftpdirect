@@ -6,6 +6,6 @@ import (
 
 func commandExit(cfg *apiConfig, arg string) error {
     fmt.Println("Closing FTP direct... Goodbye!")
-    cfg.ctxCancel()
+    cfg.ctx.Done()
     return nil
 }
