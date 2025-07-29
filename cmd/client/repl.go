@@ -51,12 +51,12 @@ func startRepl(cfg *apiConfig) {
     var prompt string
     var arg string
     scanner := bufio.NewScanner(os.Stdin)
-    time.Sleep(2*time.Second)
+    time.Sleep(1*time.Second)
     for {
         if cfg.peer == "" {
             prompt = "Headless -> "
         } else {
-            prompt = cfg.peer + " -> "
+            prompt = "\033[38;5;28m" + cfg.peer + "\033[0m -> "
         }
         fmt.Print(prompt)
         scanner.Scan()
@@ -65,6 +65,10 @@ func startRepl(cfg *apiConfig) {
             log.Fatalf("unable to read scanner input: %s", err)
         }
         input := scanner.Text()
+        if strings.TrimSpace(input) == "" {
+            fmt.Print("\033[1F\033[K")
+            continue
+        }
         fmt.Print("\033[1F\033[K"+prompt+input+"\n")
         commands := strings.Split(strings.ToLower(strings.TrimSpace(input)), " ")
         command := commands[0]
@@ -78,14 +82,13 @@ func startRepl(cfg *apiConfig) {
             if err != nil {
                 log.Println(err)
             }
-            continue
-        } else {
+        } else if strings.Contains("yesno", input){
             var addrCmd = ""
             if cfg.peer != "" {
                 addrCmd = "roomID " + cfg.peer + " "
             }
             cfg.ws.WriteMessage(websocket.TextMessage, []byte(addrCmd + input))
-            continue
         }
+        time.Sleep(1*time.Second)
     }
 }
