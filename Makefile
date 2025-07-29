@@ -10,5 +10,5 @@ build:
 		@go build -o ftpd-server ./cmd/server
 
 install: build
-		@mkdir ~/.ftpd
+		@mkdir -p ~/.ftpd
 		@mv ./ftpd ~/.local/bin/
