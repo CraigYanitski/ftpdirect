@@ -1,24 +1,32 @@
 package main
 
 import (
-	"errors"
-	"log"
 	"os"
+
+	"github.com/gorilla/websocket"
 )
 
 func commandSend(cfg *apiConfig, arg string) error {
-    if cfg.internal {
-        if cfg.peerConn == nil {
-            err := errors.New("Must first connect to TCP IP address before sending data")
-            log.Println(err)
-            return err
-        }
-        _, err := os.Open(arg)
-        if err != nil {
-            return err
-        }
-        //(*cfg.peerConn).Write(file) //TODO: use function for chunked messages
-    } else {
+    file, err := os.Open(arg)
+    if err != nil {
+        return err
     }
+    cfg.sendFile(file)
     return nil
+}
+
+func (cfg *apiConfig) sendFile(file *os.File) {
+    buf := make([]byte, 1024)
+    for {
+        n, err := file.Read(buf)
+        if err != nil {
+            break
+        }
+        if cfg.internal {
+            cfg.peerConn.Write(buf[:n])
+        } else {
+            cfg.ws.WriteMessage(websocket.BinaryMessage, buf[:n])
+        }
+    }
+    return
 }
