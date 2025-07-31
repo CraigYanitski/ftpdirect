@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/gorilla/websocket"
 )
@@ -12,8 +13,18 @@ func commandSend(cfg *apiConfig, arg string) error {
     if arg == "" {
         return errors.New("Must provide argument to `commandSend`")
     }
-    cfg.ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Sending file %s\n", arg)))
-    file, err := os.Open(arg)
+    cfg.ws.WriteMessage(
+        websocket.TextMessage, 
+        []byte(fmt.Sprintf("roomID %s Sending file %s\n", cfg.peer, arg)),
+    )
+    var filename = ""
+    if strings.HasPrefix(arg, "/") {
+        filename = arg
+    } else {
+        cwd, _ := os.Getwd()
+        filename = cwd + arg
+    }
+    file, err := os.Open(filename)
     if err != nil {
         return err
     }
