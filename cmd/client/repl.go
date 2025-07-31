@@ -88,6 +88,11 @@ func startRepl(cfg *apiConfig) {
                 addrCmd = "roomID " + cfg.peer + " "
             }
             cfg.ws.WriteMessage(websocket.TextMessage, []byte(addrCmd + input))
+        } else if (len(cfg.ready) >= 0) && (len(cfg.filename) >= 0) {
+            if strings.TrimSpace(input) != "" {
+                <-cfg.filename
+                cfg.filename <- input
+            }
         }
         time.Sleep(1*time.Second)
     }

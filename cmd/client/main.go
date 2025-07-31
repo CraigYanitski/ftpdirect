@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -18,12 +19,16 @@ import (
 
 type apiConfig struct {
     ctx        context.Context
+    ftpdDir    string
     ws         *websocket.Conn
     tcpConn    *net.TCPConn
     tcpAddr    string
     peer       string
     peerConn   *net.TCPConn
+    file       *os.File
     internal   bool
+    filename   chan string
+    ready      chan bool
 }
 
 func startTCPServer() (string, error) {
@@ -68,8 +73,22 @@ func main() {
     ftpdScheme := os.Getenv("FTPD_SCHEME")
     ftpdUrl := os.Getenv("FTPD_URL")
 
+    directoryFlag := flag.String("dir", "", "specify directory (don't connect to server)")
     internalFlag := flag.Bool("int", false, "specify internal connection (don't connect to server)")
     flag.Parse()
+
+    var saveDir = ""
+    homeDir, _ := os.UserHomeDir()
+    ftpdPath := filepath.Join(homeDir, ".ftpd")
+    if *directoryFlag == "" {
+        if _, err := os.Stat(ftpdPath); err != nil {
+            saveDir = ftpdPath
+        } else {
+            saveDir, _ = os.Getwd()
+        }
+    } else {
+        saveDir = *directoryFlag
+    }
 
     ctx, cancel := context.WithCancel(context.Background())
     defer cancel()
@@ -94,9 +113,12 @@ func main() {
 
     cfg := &apiConfig{
         ctx: ctx,
+        ftpdDir: saveDir,
         ws: conn,
         tcpAddr: tcpAddr,
         internal: *internalFlag,
+        filename: make(chan string, 1),
+        ready: make(chan bool, 1),
     }
     cfg.ws.WriteMessage(websocket.TextMessage, []byte("TCP IP " + tcpAddr))
 
@@ -122,9 +144,27 @@ func main() {
                 } else if msgArgs[0] == "Disconnecting" {
                     cfg.peer = ""
                     fmt.Printf("    -> disconnected from %s\n", msgArgs[len(msgArgs)-1])
+                } else if msgArgs[0] == "Sending" {
+                    filename := msgArgs[len(msgArgs) - 1]
+                    fmt.Printf("Receive file %s. Alternative name: ", filename)
+                    cfg.filename <- filename
+                    cfg.ready <- false
                 }
             } else {
                 log.Printf("received: %x\n", message)
+                if len(cfg.filename) >= 0 {
+                    file, err := os.Create(<-cfg.filename)
+                    if err != nil {
+                        log.Printf("error writing file: %s\n", err)
+                        continue
+                    }
+                    cfg.file = file
+                }
+                if len(cfg.ready) == 0 {
+                    log.Print("unable to process binary data from websocket")
+                    continue
+                }
+                writeFile(message)  //TODO: create function to write to file
             }
         }
     }()
