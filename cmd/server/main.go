@@ -81,8 +81,9 @@ func (cfg *apiConfig) handleConnection(w http.ResponseWriter, r *http.Request) {
             log.Printf("Error reading message from websocket: %s\n", err)
             break
         }
+        switch msgType {
         // process text message
-        if msgType == websocket.TextMessage {
+        case websocket.TextMessage:
             // log message
             fmt.Printf("Received: %s\n", message)
 
@@ -125,6 +126,7 @@ func (cfg *apiConfig) handleConnection(w http.ResponseWriter, r *http.Request) {
             } else if ((msgArgs[0] == "TCP") || (msgArgs[0] == "IP")) && (len(msgArgs) <= 3) {
                 continue
             } else if msgArgs[0] == "roomID" {
+                log.Printf("sending to roomID: %s\n", roomID)
                 // all other communication should begin with room ID
                 conns, ok := cfg.connections[msgArgs[1]]
                 if !ok {
@@ -154,7 +156,7 @@ func (cfg *apiConfig) handleConnection(w http.ResponseWriter, r *http.Request) {
                     }
                 }
             }
-        } else {
+        case websocket.BinaryMessage:
             // otherwise send binary data to peer
             for _, c := range cfg.connections[roomID] {
                 if c != conn {
