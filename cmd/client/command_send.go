@@ -42,14 +42,14 @@ func commandSend(cfg *apiConfig, arg string) error {
 func (cfg *apiConfig) sendFile(file *os.File) {
     /* Send file to appropriate connection */
     buf := make([]byte, 1024)
-    log.Print("")
+    // log.Print("")
     for {
         n, err := file.Read(buf)
         if err != nil {
             fmt.Printf("\nerror reading file: %s\n", err)
             break
         }
-        fmt.Printf("%x", buf[:n])
+        // fmt.Printf("%x", buf[:n])
         if cfg.internal {
             cfg.peerConn.Write(buf[:n])
         } else {

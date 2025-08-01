@@ -48,17 +48,16 @@ func getCommands() map[string]cliCommand {
 }
 
 func startRepl(cfg *apiConfig) {
-    var prompt string
     var arg string
     scanner := bufio.NewScanner(os.Stdin)
     time.Sleep(1*time.Second)
     for {
         if cfg.peer == "" {
-            prompt = "Headless -> "
+            cfg.prompt = "Headless -> "
         } else {
-            prompt = "\033[38;5;28m" + cfg.peer + "\033[0m -> "
+            cfg.prompt = "\033[38;5;28m" + cfg.peer + "\033[0m -> "
         }
-        fmt.Print(prompt)
+        fmt.Print(cfg.prompt)
         scanner.Scan()
         err := scanner.Err()
         if err != nil {
@@ -69,16 +68,12 @@ func startRepl(cfg *apiConfig) {
             fmt.Print("\033[1F\033[K")
             continue
         }
-        fmt.Print("\033[1F\033[K"+prompt+input+"\n")
-        commands := strings.Split(strings.ToLower(strings.TrimSpace(input)), " ")
-        command := commands[0]
+        fmt.Print("\033[1F\033[K"+cfg.prompt+input+"\n")
+        commands := strings.Split(strings.TrimSpace(input), " ")
+        command := strings.ToLower(commands[0])
         if _, ok := getCommands()[command]; ok {
             if len(commands) > 1 {
-                if command == "send" {
-                    arg = input[strings.Index(input, " ")+1:]
-                } else {
-                    arg = commands[1]
-                }
+                arg = commands[1]
             } else {
                 arg = ""
             }
