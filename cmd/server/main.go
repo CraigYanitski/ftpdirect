@@ -98,7 +98,7 @@ func (cfg *apiConfig) handleConnection(w http.ResponseWriter, r *http.Request) {
                 } else {
                     rID = ""
                 }
-                roomID := cfg.connect(
+                roomID = cfg.connect(
                     conn, 
                     rID,
                 )
@@ -123,6 +123,7 @@ func (cfg *apiConfig) handleConnection(w http.ResponseWriter, r *http.Request) {
                 }
             } else if (msgArgs[0] == "Disconnect") && (len(msgArgs) == 2) {
                 cfg.disconnect(msgArgs[1])
+                roomID = ""
             } else if ((msgArgs[0] == "TCP") || (msgArgs[0] == "IP")) && (len(msgArgs) <= 3) {
                 continue
             } else if msgArgs[0] == "roomID" {
