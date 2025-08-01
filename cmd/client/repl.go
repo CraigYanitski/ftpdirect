@@ -74,7 +74,11 @@ func startRepl(cfg *apiConfig) {
         command := commands[0]
         if _, ok := getCommands()[command]; ok {
             if len(commands) > 1 {
-                arg = commands[1]
+                if command == "send" {
+                    arg = input[strings.Index(input, " ")+1:]
+                } else {
+                    arg = commands[1]
+                }
             } else {
                 arg = ""
             }

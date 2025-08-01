@@ -70,8 +70,8 @@ func handleIncoming(conn net.Conn) {
 
 func main() {
     godotenv.Load()
-    ftpdScheme := os.Getenv("FTPD_SCHEME")
-    ftpdUrl := os.Getenv("FTPD_URL")
+    //ftpdScheme := os.Getenv("FTPD_SCHEME")
+    //ftpdUrl := os.Getenv("FTPD_URL")
 
     directoryFlag := flag.String("dir", "", "specify directory (don't connect to server)")
     internalFlag := flag.Bool("int", false, "specify internal connection (don't connect to server)")
@@ -96,7 +96,7 @@ func main() {
     interrupt := make(chan os.Signal, 1)
     signal.Notify(interrupt, os.Interrupt)
 
-    u := url.URL{Scheme: ftpdScheme, Host: ftpdUrl, Path: "/connect"}
+    u := url.URL{Scheme: "wss", Host: "ftpd.fly.dev", Path: "/connect"}
 
     conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
     if err != nil {
@@ -130,12 +130,13 @@ func main() {
         defer close(done)
         for {
             msgType, message, err := conn.ReadMessage()
-            fmt.Print("\033[G\033[K")
             if err != nil {
                 log.Printf("error reading from websocket: %s\n", err)
                 return
             }
-            if msgType == websocket.TextMessage {
+            switch msgType {
+            case websocket.TextMessage:
+                fmt.Print("\033[G\033[K")
                 msgArgs := strings.Fields(string(message))
                 log.Printf("received: %s\n", message)
                 if msgArgs[0] == "Connected" {
@@ -146,14 +147,21 @@ func main() {
                     fmt.Printf("    -> disconnected from %s\n", msgArgs[len(msgArgs)-1])
                 } else if msgArgs[0] == "Sending" {
                     filename := msgArgs[len(msgArgs) - 1]
-                    fmt.Printf("Receive file %s. Alternative name: ", filename)
+                    fmt.Printf("Receive file %s. Alternative name: \n", filename)
                     cfg.filename <- filename
                     cfg.ready <- false
+                    fmt.Println("Processing bytes...")
+                } else if string(message) == "Done sending file" {
+                    cfg.file.Close()
+                    <-cfg.ready
+                    log.Println("\nClosing file")
+                    fmt.Println(len(cfg.filename), len(cfg.ready))
                 }
-            } else {
-                log.Printf("received: %x\n", message)
-                if len(cfg.filename) >= 0 {
-                    file, err := os.Create(<-cfg.filename)
+            case websocket.BinaryMessage:
+                fmt.Printf("%x", message)
+                if len(cfg.filename) > 0 {
+                    filename := <-cfg.filename
+                    file, err := os.Create(filename)
                     if err != nil {
                         log.Printf("error writing file: %s\n", err)
                         continue
@@ -164,7 +172,7 @@ func main() {
                     log.Print("unable to process binary data from websocket")
                     continue
                 }
-                writeFile(message)  //TODO: create function to write to file
+                // writeFile(message)  //TODO: create function to write to file
             }
         }
     }()
