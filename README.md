@@ -45,7 +45,7 @@ Now you or your peer can can use the command `send <filename>` to send a file ov
 If your peer is in your local network, run the executable with,
 
 ```bash
-ftpd -i true
+ftpd -int true
 ```
 
 This will specify that the connection is internal.
