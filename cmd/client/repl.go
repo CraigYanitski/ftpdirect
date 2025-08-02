@@ -73,7 +73,7 @@ func startRepl(cfg *apiConfig) {
         command := strings.ToLower(commands[0])
         if _, ok := getCommands()[command]; ok {
             if len(commands) > 1 {
-                arg = commands[1]
+                arg = strings.Join(commands[1:], " ")
             } else {
                 arg = ""
             }

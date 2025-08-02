@@ -41,7 +41,7 @@ func commandSend(cfg *apiConfig, arg string) error {
 
 func (cfg *apiConfig) sendFile(file *os.File) {
     /* Send file to appropriate connection */
-    buf := make([]byte, 1024)
+    buf := make([]byte, 1<<20)
     // log.Print("")
     for {
         n, err := file.Read(buf)

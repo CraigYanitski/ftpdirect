@@ -29,13 +29,14 @@ func wsListener(cfg *apiConfig) {
                 cfg.peer = ""
                 fmt.Printf("    -> disconnected from %s\n", msgArgs[len(msgArgs)-1])
             } else if msgArgs[0] == "Sending" {
-                filename := msgArgs[len(msgArgs) - 1]
+                filename := strings.Join(msgArgs[2:], " ")
                 fmt.Printf("Receive file %s. (Optional) enter an alternative name: ", filename)
                 cfg.filename <- filename
                 // cfg.ready <- false
                 // fmt.Println("Processing...")
             } else if string(message) == "Done sending file" {
                 cfg.file.Close()
+                cfg.file = nil
                 <-cfg.ready
                 log.Println("\nClosing file")
             }
