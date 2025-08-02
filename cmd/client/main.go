@@ -91,6 +91,7 @@ func main() {
     } else {
         saveDir = *directoryFlag
     }
+    fmt.Println(saveDir)
 
     ctx, cancel := context.WithCancel(context.Background())
     defer cancel()

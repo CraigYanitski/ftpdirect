@@ -33,7 +33,7 @@ func wsListener(cfg *apiConfig) {
                 fmt.Printf("Receive file %s. (Optional) enter an alternative name: ", filename)
                 cfg.filename <- filename
                 // cfg.ready <- false
-                fmt.Println("Processing...")
+                // fmt.Println("Processing...")
             } else if string(message) == "Done sending file" {
                 cfg.file.Close()
                 <-cfg.ready
