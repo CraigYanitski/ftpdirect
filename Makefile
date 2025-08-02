@@ -11,7 +11,7 @@ build:
 
 build-exec:
 		@GOOS=linux GOARCH=amd64 go build -o ftpd ./cmd/client
-		@GOOS=windows GOARCH=amd64 go build -o ftpd-win ./cmd/client
+		@GOOS=windows GOARCH=amd64 go build -o ftpd-win.exe ./cmd/client
 		@GOOS=darwin GOARCH=amd64 go build -o ftpd-mac ./cmd/client
 		@go build -o ftpd-server ./cmd/server
 
