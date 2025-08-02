@@ -62,6 +62,7 @@ func wsListener(cfg *apiConfig) {
             //     continue
             // }
             cfg.writeFile(message)
+            cfg.ready <- true
         }
     }
 }

@@ -64,7 +64,7 @@ func startRepl(cfg *apiConfig) {
             log.Fatalf("unable to read scanner input: %s", err)
         }
         input := scanner.Text()
-        if strings.TrimSpace(input) == "" {
+        if (strings.TrimSpace(input) == "") && (len(cfg.filename) == 0) {
             fmt.Print("\033[1F\033[K")
             continue
         }
@@ -81,18 +81,18 @@ func startRepl(cfg *apiConfig) {
             if err != nil {
                 log.Println(err)
             }
+        } else if len(cfg.filename) > 0 {
+            if strings.TrimSpace(input) != "" {
+                <-cfg.filename
+                cfg.filename <- input
+            }
+            cfg.ready <- true
         } else if strings.Contains("yesno", input){
             var addrCmd = ""
             if cfg.peer != "" {
                 addrCmd = "roomID " + cfg.peer + " "
             }
             cfg.ws.WriteMessage(websocket.TextMessage, []byte(addrCmd + input))
-        } else if len(cfg.filename) >= 0 {
-            if strings.TrimSpace(input) != "" {
-                <-cfg.filename
-                cfg.filename <- input
-            }
-            cfg.ready <- true
         }
         time.Sleep(1*time.Second)
     }
