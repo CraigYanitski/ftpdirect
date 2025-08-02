@@ -30,7 +30,7 @@ func wsListener(cfg *apiConfig) {
                 fmt.Printf("    -> disconnected from %s\n", msgArgs[len(msgArgs)-1])
             } else if msgArgs[0] == "Sending" {
                 filename := msgArgs[len(msgArgs) - 1]
-                fmt.Printf("Receive file %s. Alternative name: \n", filename)
+                fmt.Printf("Receive file %s. (Optional) enter an alternative name: ", filename)
                 cfg.filename <- filename
                 // cfg.ready <- false
                 fmt.Println("Processing...")
@@ -41,11 +41,12 @@ func wsListener(cfg *apiConfig) {
             }
         case websocket.BinaryMessage:
             // fmt.Printf("%x", message)
-            <-cfg.ready
+            <-cfg.ready  //hold until filename set
             if len(cfg.filename) > 0 {
+                // This should execute on the first pass to create the file or force rename
                 filename := <-cfg.filename
                 if _, err := os.Stat(filepath.Join(cfg.ftpdDir, filename)); os.IsExist(err) {
-                    fmt.Printf("file %s exists.", filename)
+                    fmt.Printf("file %s exists. Enter a new name: ", filename)
                     cfg.filename <- filename
                     continue
                 }
