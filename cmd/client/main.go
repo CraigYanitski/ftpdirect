@@ -83,15 +83,14 @@ func main() {
     homeDir, _ := os.UserHomeDir()
     ftpdPath := filepath.Join(homeDir, ".ftpd")
     if *directoryFlag == "" {
-        if _, err := os.Stat(ftpdPath); err != nil {
-            saveDir = ftpdPath
-        } else {
+        if _, err := os.Stat(ftpdPath); os.IsNotExist(err) {
             saveDir, _ = os.Getwd()
+        } else {
+            saveDir = ftpdPath
         }
     } else {
         saveDir = *directoryFlag
     }
-    fmt.Println(saveDir)
 
     ctx, cancel := context.WithCancel(context.Background())
     defer cancel()
