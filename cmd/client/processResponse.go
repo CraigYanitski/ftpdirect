@@ -32,7 +32,7 @@ func wsListener(cfg *apiConfig) {
                 filename := msgArgs[len(msgArgs) - 1]
                 fmt.Printf("Receive file %s. Alternative name: \n", filename)
                 cfg.filename <- filename
-                cfg.ready <- false
+                // cfg.ready <- false
                 fmt.Println("Processing...")
             } else if string(message) == "Done sending file" {
                 cfg.file.Close()
@@ -41,6 +41,7 @@ func wsListener(cfg *apiConfig) {
             }
         case websocket.BinaryMessage:
             // fmt.Printf("%x", message)
+            <-cfg.ready
             if len(cfg.filename) > 0 {
                 filename := <-cfg.filename
                 if _, err := os.Stat(filepath.Join(cfg.ftpdDir, filename)); os.IsExist(err) {
@@ -55,10 +56,10 @@ func wsListener(cfg *apiConfig) {
                 }
                 cfg.file = file
             }
-            if len(cfg.ready) == 0 {
-                log.Print("unable to process binary data from websocket")
-                continue
-            }
+            // if len(cfg.ready) == 0 {
+            //     log.Print("unable to process binary data from websocket")
+            //     continue
+            // }
             cfg.writeFile(message)
         }
     }

@@ -68,7 +68,7 @@ func startRepl(cfg *apiConfig) {
             fmt.Print("\033[1F\033[K")
             continue
         }
-        fmt.Print("\033[1F\033[K"+cfg.prompt+input+"\n")
+        // fmt.Print("\033[1F\033[K"+cfg.prompt+input+"\n")
         commands := strings.Split(strings.TrimSpace(input), " ")
         command := strings.ToLower(commands[0])
         if _, ok := getCommands()[command]; ok {
@@ -87,11 +87,12 @@ func startRepl(cfg *apiConfig) {
                 addrCmd = "roomID " + cfg.peer + " "
             }
             cfg.ws.WriteMessage(websocket.TextMessage, []byte(addrCmd + input))
-        } else if (len(cfg.ready) >= 0) && (len(cfg.filename) >= 0) {
+        } else if len(cfg.filename) >= 0 {
             if strings.TrimSpace(input) != "" {
                 <-cfg.filename
                 cfg.filename <- input
             }
+            cfg.ready <- true
         }
         time.Sleep(1*time.Second)
     }
