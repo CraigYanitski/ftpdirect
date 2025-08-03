@@ -42,22 +42,20 @@ func wsListener(cfg *apiConfig) {
             }
         case websocket.BinaryMessage:
             // fmt.Printf("%x", message)
+            // This should execute on the first pass when a file is sent to either create the file or force rename
             for len(cfg.filename) > 0 {
                 <-cfg.ready  //hold until filename set
-                if len(cfg.filename) > 0 {
-                    // This should execute on the first pass to create the file or force rename
-                    filename := <-cfg.filename
-                    err = cfg.createFile(filename)
-                    if err != nil {
-                        if os.IsNotExist(err) {
-                            fmt.Printf("file %s exists. Enter a new name: ", filename)
-                        }
-                        cfg.filename <- filename
-                        continue
+                filename := <-cfg.filename
+                err = cfg.createFile(filename)
+                if err != nil {
+                    if os.IsNotExist(err) {
+                        fmt.Printf("File %s exists. Enter a new name: ", filename)
                     }
-                    cfg.ready <- true
-                    break
+                    cfg.filename <- filename
+                    continue
                 }
+                cfg.ready <- true
+                break
             }
             <-cfg.ready
             cfg.writeFile(message)

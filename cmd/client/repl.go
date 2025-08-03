@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -55,7 +56,7 @@ func startRepl(cfg *apiConfig) {
         if cfg.peer == "" {
             cfg.prompt = "Headless -> "
         } else {
-            cfg.prompt = "\033[38;5;28m" + cfg.peer + "\033[0m -> "
+            cfg.prompt = "\033[38;5;28m " + cfg.peer + " \033[0m -> "
         }
         fmt.Print(cfg.prompt)
         scanner.Scan()
@@ -84,7 +85,7 @@ func startRepl(cfg *apiConfig) {
         } else if len(cfg.filename) > 0 {
             if strings.TrimSpace(input) != "" {
                 <-cfg.filename
-                cfg.filename <- input
+                cfg.filename <- filepath.Join(cfg.ftpdDir, input)
             }
             cfg.ready <- true
         } else if strings.Contains("yesno", input){
