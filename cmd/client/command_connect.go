@@ -17,7 +17,8 @@ func commandConnect(cfg *apiConfig, arg string) error {
             log.Println(err)
             return err
         }
-        conn, err := net.Dial("tcp", arg)
+        cfg.peer = arg
+        conn, err := net.Dial("tcp", cfg.peer)
         if err != nil {
             return err
         }
