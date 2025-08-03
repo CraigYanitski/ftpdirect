@@ -32,43 +32,6 @@ type apiConfig struct {
     ready      chan bool
 }
 
-func startTCPServer() (string, error) {
-    listener, err := net.Listen("tcp", ":0")
-    if err != nil {
-        return "", err
-    }
-    port := listener.Addr().(*net.TCPAddr).Port
-    go func() {
-        for {
-            conn, err := listener.Accept()
-            if err != nil{
-                continue
-            }
-            go handleIncoming(conn)
-        }
-    }()
-    return fmt.Sprintf("%s:%d", getLocalIP(), port), nil
-}
-
-func getLocalIP() string {
-    conn, _ := net.Dial("udp", "8.8.8.8:80")
-    defer conn.Close()
-    return strings.Split(conn.LocalAddr().String(), ":")[0]
-}
-
-func handleIncoming(conn net.Conn) {
-    defer conn.Close()
-    buf := make([]byte, 1024)
-    for {
-        n, err := conn.Read(buf)
-        if err != nil {
-            break
-        }
-        fmt.Printf("%x", buf[:n])
-    }
-    return
-}
-
 func main() {
     godotenv.Load()
     ftpdScheme := os.Getenv("FTPD_SCHEME")
@@ -106,28 +69,27 @@ func main() {
     }
     defer conn.Close()
 
-    tcpAddr, err := startTCPServer()
-    if err != nil {
-        log.Println("error starting TCP server")
-        return
-    }
-    log.Printf("TCP listening on %s\n", tcpAddr)
-
     cfg := &apiConfig{
         ctx: ctx,
         ftpdDir: saveDir,
         ws: conn,
-        tcpAddr: tcpAddr,
         internal: *internalFlag,
         filename: make(chan string, 1),
         ready: make(chan bool, 1),
     }
-    cfg.ws.WriteMessage(websocket.TextMessage, []byte("TCP IP " + tcpAddr))
+
+    err = cfg.startTCPServer()
+    if err != nil {
+        log.Println("error starting TCP server")
+        return
+    }
+    log.Printf("TCP listening on %s\n", cfg.tcpAddr)
+    cfg.ws.WriteMessage(
+        websocket.TextMessage, 
+        []byte("TCP IP " + cfg.tcpAddr),
+    )
 
     go startRepl(cfg)
-
-    done := make(chan struct{})
-
     go wsListener(cfg)
 
     ticker := time.NewTicker(time.Second)
@@ -135,14 +97,8 @@ func main() {
 
     for {
         select {
-        case <-done:
+        case <-cfg.ctx.Done():
             return
-        // case t := <-ticker.C:
-        //     err := conn.WriteMessage(websocket.TextMessage, []byte(t.String()))
-        //     if err != nil {
-        //         log.Println("error writing time to websocket")
-        //         return
-        //     }
         case <-interrupt:
             log.Println("interrupt...")
             err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
@@ -152,10 +108,59 @@ func main() {
             }
             time.After(time.Second)
             select {
-            case <-done:
+            case <-cfg.ctx.Done():
             case <-time.After(time.Second):
             }
             return
         }
     }
 }
+
+func (cfg *apiConfig) startTCPServer() error {
+    listener, err := net.Listen("tcp", ":0")
+    if err != nil {
+        return err
+    }
+    port := listener.Addr().(*net.TCPAddr).Port
+    go func() {
+        for {
+            conn, err := listener.Accept()
+            if err != nil{
+                continue
+            }
+            err = cfg.createFile(time.Now().Format("2010-01-02_15:04:05"))
+            buf := make([]byte, 1<<20)
+            for {
+                n, err := conn.Read(buf)
+                if err != nil {
+                    break
+                }
+                cfg.writeFile(buf[:n])
+            }
+            cfg.file.Close()
+            cfg.file = nil
+        }
+    }()
+    cfg.tcpAddr = fmt.Sprintf("%s:%d", getLocalIP(), port)
+    return nil
+}
+
+func getLocalIP() string {
+    conn, _ := net.Dial("udp", "8.8.8.8:80")
+    defer conn.Close()
+    return strings.Split(conn.LocalAddr().String(), ":")[0]
+}
+
+func handleIncoming(conn net.Conn) {
+    defer conn.Close()
+    buf := make([]byte, 1024)
+    for {
+        n, err := conn.Read(buf)
+        if err != nil {
+            break
+        }
+        fmt.Printf("%x", buf[:n])
+    }
+    return
+}
+

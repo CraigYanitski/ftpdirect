@@ -42,33 +42,46 @@ func wsListener(cfg *apiConfig) {
             }
         case websocket.BinaryMessage:
             // fmt.Printf("%x", message)
-            <-cfg.ready  //hold until filename set
-            if len(cfg.filename) > 0 {
-                // This should execute on the first pass to create the file or force rename
-                filename := <-cfg.filename
-                if _, err := os.Stat(filepath.Join(cfg.ftpdDir, filename)); os.IsExist(err) {
-                    fmt.Printf("file %s exists. Enter a new name: ", filename)
-                    cfg.filename <- filename
-                    continue
+            for len(cfg.filename) > 0 {
+                <-cfg.ready  //hold until filename set
+                if len(cfg.filename) > 0 {
+                    // This should execute on the first pass to create the file or force rename
+                    filename := <-cfg.filename
+                    err = cfg.createFile(filename)
+                    if err != nil {
+                        if os.IsNotExist(err) {
+                            fmt.Printf("file %s exists. Enter a new name: ", filename)
+                        }
+                        cfg.filename <- filename
+                        continue
+                    }
+                    cfg.ready <- true
+                    break
                 }
-                file, err := os.Create(filepath.Join(cfg.ftpdDir, filename))
-                if err != nil {
-                    log.Printf("error writing file: %s\n", err)
-                    continue
-                }
-                cfg.file = file
             }
-            // if len(cfg.ready) == 0 {
-            //     log.Print("unable to process binary data from websocket")
-            //     continue
-            // }
+            <-cfg.ready
             cfg.writeFile(message)
             cfg.ready <- true
         }
     }
 }
 
+func (cfg *apiConfig) createFile(filename string) error {
+    if _, err := os.Stat(filepath.Join(cfg.ftpdDir, filename)); err != nil {
+        log.Println(err)
+        return err
+    }
+    file, err := os.Create(filepath.Join(cfg.ftpdDir, filename))
+    if err != nil {
+        log.Printf("error writing file: %s\n", err)
+        return err
+    }
+    cfg.file = file
+    return nil
+}
+
 func (cfg *apiConfig) writeFile(buf []byte) error {
     cfg.file.Write(buf)
     return nil
 }
+
