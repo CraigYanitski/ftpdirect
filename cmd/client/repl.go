@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -85,7 +84,7 @@ func startRepl(cfg *apiConfig) {
         } else if len(cfg.filename) > 0 {
             if strings.TrimSpace(input) != "" {
                 <-cfg.filename
-                cfg.filename <- filepath.Join(cfg.ftpdDir, input)
+                cfg.filename <- input
             }
             cfg.ready <- true
         } else if strings.Contains("yesno", input){

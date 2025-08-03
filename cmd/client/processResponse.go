@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -9,6 +10,8 @@ import (
 
 	"github.com/gorilla/websocket"
 )
+
+var errExists = errors.New("File already exists")
 
 func wsListener(cfg *apiConfig) {
     for {
@@ -47,8 +50,8 @@ func wsListener(cfg *apiConfig) {
                 <-cfg.ready  //hold until filename set
                 filename := <-cfg.filename
                 err = cfg.createFile(filename)
-                if err != nil {
-                    if os.IsNotExist(err) {
+                if err == errExists {
+                    if !os.IsNotExist(err) {
                         fmt.Printf("File %s exists. Enter a new name: ", filename)
                     }
                     cfg.filename <- filename
@@ -65,9 +68,8 @@ func wsListener(cfg *apiConfig) {
 }
 
 func (cfg *apiConfig) createFile(filename string) error {
-    if _, err := os.Stat(filepath.Join(cfg.ftpdDir, filename)); err != nil {
-        log.Println(err)
-        return err
+    if _, err := os.Stat(filepath.Join(cfg.ftpdDir, filename)); err == nil {
+        return errExists
     }
     file, err := os.Create(filepath.Join(cfg.ftpdDir, filename))
     if err != nil {
