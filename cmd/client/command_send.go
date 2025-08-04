@@ -15,10 +15,12 @@ func commandSend(cfg *apiConfig, arg string) error {
     if arg == "" {
         return errors.New("Must provide argument to `commandSend`")
     }
-    cfg.ws.WriteMessage(
-        websocket.TextMessage, 
-        []byte(fmt.Sprintf("roomID %s Sending file %s\n", cfg.peer, arg)),
-    )
+    if !cfg.internal {
+        cfg.ws.WriteMessage(
+            websocket.TextMessage, 
+            []byte(fmt.Sprintf("roomID %s Sending file %s\n", cfg.peer, arg)),
+        )
+    }
     var filename = ""
     if strings.HasPrefix(arg, "/") {
         filename = arg
@@ -31,10 +33,12 @@ func commandSend(cfg *apiConfig, arg string) error {
         return err
     }
     cfg.sendFile(file)
-    cfg.ws.WriteMessage(
-        websocket.TextMessage, 
-        []byte(fmt.Sprintf("roomID %s Done sending file", cfg.peer)),
-    )
+    if !cfg.internal {
+        cfg.ws.WriteMessage(
+            websocket.TextMessage, 
+            []byte(fmt.Sprintf("roomID %s Done sending file", cfg.peer)),
+        )
+    }
     log.Printf("sent file %s\n", filename)
     return nil
 }
