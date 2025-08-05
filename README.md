@@ -1,5 +1,5 @@
-# FTPdirect
----
+FTPdirect
+===
 
 ## Motivation
 
@@ -54,10 +54,18 @@ you can enter the TCP IP address of your peer.
 This can be used to send a file to your peer, and your peer can do the same by connecting to your TCP IP address.
 The issue with this at the moment is that the filename will just be the timestamp, and you will need to 
 rename it manually.
+Also, while a websocket connection is created during internal mode, no messages are sent over it.
+Possibly this will change in after future development.
+
+Use a keyboard interrupt to exit the REPL.
+The "exit" command is currently not working very well, requiring a keyboard interrupt anyways.
 
 ## Development
 
 There are a few features that will be developed in the coming months.
+
+**directory support**: at the moment single files can be sent.
+It will be useful in future versions to recursive through directories.
 
 **Establish TCP connection rather than using websocket**: sending file data through the server throttles the 
 transfer speed and is not technically a *direct* method for FTP.
