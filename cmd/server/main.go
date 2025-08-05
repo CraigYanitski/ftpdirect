@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
+
 	// "time"
 
 	"github.com/google/uuid"
@@ -169,6 +171,7 @@ func (cfg *apiConfig) handleConnection(w http.ResponseWriter, r *http.Request) {
                 cfg.disconnect(roomID)
             }
             conn.WriteMessage(websocket.CloseMessage, []byte{})
+            time.Sleep(5*time.Second)
             return
         }
     }
