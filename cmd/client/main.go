@@ -100,17 +100,7 @@ func main() {
         case <-cfg.ctx.Done():
             return
         case <-interrupt:
-            log.Println("interrupt...")
-            err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-            if err != nil {
-                log.Println("Error writing close message")
-                return
-            }
-            time.After(time.Second)
-            select {
-            case <-cfg.ctx.Done():
-            case <-time.After(time.Second):
-            }
+            commandExit(cfg, "")
             return
         }
     }

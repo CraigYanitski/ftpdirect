@@ -1,11 +1,14 @@
 package main
 
 import (
-    "fmt"
+	"fmt"
+
+	"github.com/gorilla/websocket"
 )
 
 func commandExit(cfg *apiConfig, arg string) error {
     fmt.Println("Closing FTP direct... Goodbye!")
+    cfg.ws.WriteMessage(websocket.CloseMessage, []byte{})
     cfg.ctx.Done()
     return nil
 }

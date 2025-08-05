@@ -81,6 +81,9 @@ func startRepl(cfg *apiConfig) {
             if err != nil {
                 log.Println(err)
             }
+            if command == "exit" {
+                break
+            }
         } else if len(cfg.filename) > 0 {
             if strings.TrimSpace(input) != "" {
                 <-cfg.filename

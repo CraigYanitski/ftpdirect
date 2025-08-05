@@ -63,6 +63,10 @@ func wsListener(cfg *apiConfig) {
             <-cfg.ready
             cfg.writeFile(message)
             cfg.ready <- true
+        case websocket.CloseMessage:
+            fmt.Print("\033[G\033[K")
+            log.Printf("received: %s\n", message)
+            return
         }
     }
 }
