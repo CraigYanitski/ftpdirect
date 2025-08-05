@@ -20,6 +20,12 @@ Currently a direct P2P connection is not established and files are transferred v
 The best way to test this is to download and run an executable.
 This is setup to use the current deployed server.
 Any downloaded files will default to a `.ftpd` directory in your home directory.
+For continued use of FTPdirect, create the directory `$HOME/.ftpd`.
+You can also specify a download directory using (this might be added as a REPL command in the future),
+
+```bash
+ftpd -dir <download-dir>
+```
 
 If you would like to use FTPdirect on your own server, make sure you create a `.env` file setting `FTPD_PORT`
 for the port where you want your server to listen for connections.
