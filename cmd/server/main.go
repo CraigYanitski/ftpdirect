@@ -164,6 +164,12 @@ func (cfg *apiConfig) handleConnection(w http.ResponseWriter, r *http.Request) {
                     c.WriteMessage(websocket.BinaryMessage, message)
                 }
             }
+        case websocket.CloseMessage:
+            if roomID != "" {
+                cfg.disconnect(roomID)
+            }
+            conn.WriteMessage(websocket.CloseMessage, []byte{})
+            return
         }
     }
 }
