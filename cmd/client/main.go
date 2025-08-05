@@ -118,7 +118,7 @@ func (cfg *apiConfig) startTCPServer() error {
             if err != nil{
                 continue
             }
-            err = cfg.createFile(time.Now().Format("2010-01-02_15:04:05"))
+            err = cfg.createFile(time.Now().Format("2006-01-02_15:04:05"))
             buf := make([]byte, 1<<20)
             for {
                 n, err := conn.Read(buf)
