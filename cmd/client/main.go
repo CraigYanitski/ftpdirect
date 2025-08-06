@@ -18,7 +18,7 @@ import (
 )
 
 type apiConfig struct {
-    ctx        context.Context
+    ctxCancel  context.CancelFunc
     ftpdDir    string
     ws         *websocket.Conn
     tcpConn    *net.TCPConn
@@ -70,7 +70,7 @@ func main() {
     defer conn.Close()
 
     cfg := &apiConfig{
-        ctx: ctx,
+        ctxCancel: cancel,
         ftpdDir: saveDir,
         ws: conn,
         internal: *internalFlag,
@@ -97,7 +97,7 @@ func main() {
 
     for {
         select {
-        case <-cfg.ctx.Done():
+        case <-ctx.Done():
             return
         case <-interrupt:
             commandExit(cfg, "")
