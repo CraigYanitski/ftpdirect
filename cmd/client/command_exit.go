@@ -9,6 +9,6 @@ import (
 func commandExit(cfg *apiConfig, arg string) error {
     fmt.Println("Closing FTP direct... Goodbye!")
     cfg.ws.WriteMessage(websocket.CloseMessage, []byte{})
-    cfg.ctx.Done()
+    cfg.ctxCancel()
     return nil
 }
