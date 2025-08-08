@@ -128,6 +128,13 @@ func (cfg *apiConfig) handleConnection(w http.ResponseWriter, r *http.Request) {
                 roomID = ""
             } else if ((msgArgs[0] == "TCP") || (msgArgs[0] == "IP")) && (len(msgArgs) <= 3) {
                 continue
+            } else if (msgArgs[0] == "Close") && (len(msgArgs) == 0) {
+                if roomID != "" {
+                    cfg.disconnect(roomID)
+                }
+                conn.WriteMessage(websocket.CloseMessage, []byte{})
+                time.Sleep(5*time.Second)
+                return
             } else if msgArgs[0] == "roomID" {
                 log.Printf("sending to roomID: %s\n", roomID)
                 // all other communication should begin with room ID
