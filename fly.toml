@@ -43,7 +43,7 @@ primary_region = 'sea'
     port = 883
 
   [[services.ports]]
-    handlers = ["rtcp"]
+    handlers = ["http"]
     port = 881
 
 [[vm]]
