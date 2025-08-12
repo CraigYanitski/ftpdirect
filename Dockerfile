@@ -4,7 +4,6 @@ FROM golang:${GO_VERSION}-bookworm as builder
 WORKDIR /usr/src/app
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify
-RUN go install github.com/go-gost/gost/cmd/gost@latest
 COPY . .
 RUN go build -v -o /ftpd-server ./cmd/server
 
@@ -12,6 +11,7 @@ RUN go build -v -o /ftpd-server ./cmd/server
 FROM debian:bookworm
 
 COPY --from=builder /ftpd-server /usr/local/bin/
+RUN go install github.com/go-gost/gost/cmd/gost@latest
 ENV FTPD_PORT=8080
 ENV RELAY_PORT=8443
 EXPOSE $FTPD_PORT
