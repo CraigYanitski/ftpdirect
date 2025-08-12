@@ -5,11 +5,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	//"os/exec"
 	"strings"
 	"sync"
 	"time"
-
-	// "time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -31,12 +30,22 @@ type apiConfig struct {
 func main() {
     godotenv.Load()
     port := os.Getenv("FTPD_PORT")
+    //relay := os.Getenv("RELAY_PORT")
 
     cfg := apiConfig{
         connections: make(map[string][]*websocket.Conn),
         signals: make(map[string]chan bool),
         mu: sync.Mutex{},
     }
+
+    // Start relay server
+    //go func() {
+    //    cmd := exec.Command("gost", "-L", "tls://:"+relay)
+    //    err := cmd.Run()
+    //    if err != nil {
+    //        log.Printf("Error starting TCP relay: %s\n", err)
+    //    }
+    //}()
 
     mux := http.NewServeMux()
     mux.HandleFunc("/connect", cfg.handleConnection)
