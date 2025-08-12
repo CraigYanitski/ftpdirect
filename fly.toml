@@ -12,11 +12,29 @@ primary_region = 'sea'
     GO_VERSION = '1.24.4'
 
 [env]
-  PORT = '8080'
+  FTPD_PORT = '8080'
+  RELAY_PORT = '8443'
 
-[http_service]
+[processes]
+  app = "ftpd-server"
+  gost = "gost -L tcp://:8443"
+
+[[services]]
   internal_port = 8080
-  force_https = true
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[services]]
+  internal_port = 8443
+  protocol = "tcp"
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
   auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
