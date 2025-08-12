@@ -17,7 +17,7 @@ primary_region = 'sea'
 
 [processes]
   app = "ftpd-server"
-  gost = "gost -L http://:883"
+  gost = "gost -L http://:883 -L rtcp://:881"
 
 [[services]]
   internal_port = 8080
@@ -41,6 +41,10 @@ primary_region = 'sea'
   [[services.ports]]
     handlers = ["http"]
     port = 883
+
+  [[services.ports]]
+    handlers = ["rtcp"]
+    port = 881
 
 [[vm]]
   memory = '1gb'
