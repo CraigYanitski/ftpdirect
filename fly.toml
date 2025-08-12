@@ -40,7 +40,7 @@ primary_region = 'sea'
   
   [[services.ports]]
     handlers = ["http"]
-    port = 8443
+    port = 883
 
 [[vm]]
   memory = '1gb'
