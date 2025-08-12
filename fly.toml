@@ -17,7 +17,7 @@ primary_region = 'sea'
 
 [processes]
   app = "ftpd-server"
-  gost = "gost -L tcp://:8443"
+  gost = "gost -L http://:883"
 
 [[services]]
   internal_port = 8080
@@ -31,7 +31,7 @@ primary_region = 'sea'
     port = 443
 
 [[services]]
-  internal_port = 8443
+  internal_port = 883
   protocol = "tcp"
   processes = ['gost']
   auto_stop_machines = 'stop'

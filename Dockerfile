@@ -14,6 +14,6 @@ FROM debian:bookworm
 COPY --from=builder /ftpd-server /usr/local/bin/
 COPY --from=builder /go/bin/gost /usr/local/bin/
 ENV FTPD_PORT=8080
-ENV RELAY_PORT=8443
+ENV RELAY_PORT=883
 EXPOSE $FTPD_PORT
 EXPOSE $RELAY_PORT
