@@ -4,6 +4,7 @@ FROM golang:${GO_VERSION}-bookworm as builder
 WORKDIR /usr/src/app
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify
+RUN go install github.com/go-gost/gost/cmd/gost@latest
 COPY . .
 RUN go build -v -o /ftpd-server ./cmd/server
 
